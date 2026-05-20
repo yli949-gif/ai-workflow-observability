@@ -1,4 +1,4 @@
 confidence_band,ticket_count,escalation_rate,hallucination_rate,sla_breach_rate,avg_rating,avg_cost,avg_resolution_time,avg_confidence,ai_accuracy_rate,retry_rate
+high,72,0.1389,0.0278,0.0278,4.1764,10.6704,20.0775,0.8636,0.9444,0.3194
 low,119,0.6303,0.1092,0.1261,3.8824,19.3167,40.0897,0.505,0.5462,0.6639
 medium,209,0.3349,0.0096,0.0574,4.0512,14.4834,28.4591,0.6925,0.689,0.3014
-high,72,0.1389,0.0278,0.0278,4.1764,10.6704,20.0775,0.8636,0.9444,0.3194

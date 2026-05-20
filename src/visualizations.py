@@ -1,6 +1,6 @@
 """
 visualizations.py
-Generates 10 publication-quality visualizations for the
+Generates 10 operational dashboard charts for the
 AI Agent Workflow Observability & Performance Optimization project.
 """
 
@@ -10,388 +10,394 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import matplotlib.colors as mcolors
 import os
 import warnings
 warnings.filterwarnings("ignore")
 
-# ── Try preferred style, fall back gracefully ─────────────────────────────────
-try:
-    plt.style.use("seaborn-v0_8-whitegrid")
-except OSError:
+# ── Style ─────────────────────────────────────────────────────────────────────
+for style in ("seaborn-v0_8-whitegrid", "seaborn-whitegrid", "ggplot"):
     try:
-        plt.style.use("seaborn-whitegrid")
+        plt.style.use(style)
+        break
     except OSError:
-        plt.style.use("ggplot")
+        continue
+
+plt.rcParams.update({
+    "font.family":       "DejaVu Sans",
+    "axes.titlesize":    13,
+    "axes.titleweight":  "bold",
+    "axes.titlecolor":   "#1A3A5C",
+    "axes.labelsize":    11,
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
+    "xtick.labelsize":   10,
+    "ytick.labelsize":   10,
+    "legend.fontsize":   10,
+    "figure.dpi":        150,
+})
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-CLEANED_PATH = "/Users/yiyaoli/ai-workflow-observability/data/exports/tickets_cleaned.csv"
-EXPORT_DIR   = "/Users/yiyaoli/ai-workflow-observability/data/exports/"
-FIGURES_DIR  = "/Users/yiyaoli/ai-workflow-observability/outputs/figures/"
+BASE        = "/Users/yiyaoli/ai-workflow-observability"
+CLEANED     = f"{BASE}/data/exports/tickets_cleaned.csv"
+FIGURES_DIR = f"{BASE}/outputs/figures/"
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
-# ── Load ──────────────────────────────────────────────────────────────────────
-df = pd.read_csv(CLEANED_PATH)
-bool_cols = [
+# ── Load data ─────────────────────────────────────────────────────────────────
+df = pd.read_csv(CLEANED)
+BOOL_COLS = [
     "ai_correct_response", "routing_correct", "escalation_required",
-    "escalated_to_human", "hallucination_flag", "repeat_issue", "sla_breached"
+    "escalated_to_human", "hallucination_flag", "repeat_issue", "sla_breached",
 ]
-for col in bool_cols:
+for col in BOOL_COLS:
     df[col] = df[col].astype(bool)
 
-# ── Color palette ─────────────────────────────────────────────────────────────
-BLUE      = "#2E6DA4"
-ORANGE    = "#E07B39"
-RED       = "#C0392B"
-GREEN     = "#27AE60"
-GRAY      = "#7F8C8D"
-LIGHT_BLUE = "#AED6F1"
+# ── Palette ───────────────────────────────────────────────────────────────────
+BLUE       = "#2E6DA4"
+ORANGE     = "#E07B39"
+RED        = "#C0392B"
+GREEN      = "#27AE60"
+GRAY       = "#95A5A6"
 DARK_BLUE  = "#1A3A5C"
-YELLOW    = "#F1C40F"
+LIGHT_GRAY = "#F4F6F7"
 
 DPI = 150
 
-def save(fig, name):
-    path = os.path.join(FIGURES_DIR, name)
-    fig.savefig(path, dpi=DPI, bbox_inches="tight")
+
+def _save(fig, name):
+    fig.savefig(os.path.join(FIGURES_DIR, name), dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {name}")
 
 
+def _footnote(ax, text="Source: Synthetic dataset · 400 tickets · 90-day window"):
+    ax.figure.text(0.99, 0.01, text, ha="right", va="bottom",
+                   fontsize=7.5, color=GRAY, style="italic")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# 1. KPI SUMMARY TABLE
+# 1  KPI SUMMARY TABLE
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_kpi_table():
-    kpi_data = [
-        ("AI Accuracy Rate",           f"{df['ai_correct_response'].mean()*100:.1f}%",   "Good",     GREEN),
-        ("Hallucination Rate",         f"{df['hallucination_flag'].mean()*100:.1f}%",    "Warning",  ORANGE),
-        ("Low-Confidence Rate",        f"{(df['ai_confidence_score']<0.6).mean()*100:.1f}%", "Warning", ORANGE),
-        ("Routing Accuracy Rate",      f"{df['routing_correct'].mean()*100:.1f}%",       "Good",     GREEN),
-        ("Escalation Rate",            f"{df['escalated_to_human'].mean()*100:.1f}%",    "Warning",  ORANGE),
-        ("SLA Breach Rate",            f"{df['sla_breached'].mean()*100:.1f}%",          "Critical", RED),
-        ("Repeat Issue Rate",          f"{df['repeat_issue'].mean()*100:.1f}%",          "Warning",  ORANGE),
-        ("Avg Customer Rating",        f"{df['customer_rating'].mean():.2f} / 5.0",      "Good",     GREEN),
-        ("Avg Cost Per Ticket",        f"${df['estimated_cost_per_ticket'].mean():.2f}", "Warning",  ORANGE),
-        ("Avg Resolution Time",        f"{df['total_resolution_time_minutes'].mean():.1f} min", "Warning", ORANGE),
+    rows = [
+        ("AI Accuracy Rate",           f"{df['ai_correct_response'].mean()*100:.1f}%",          "Good",     GREEN),
+        ("Hallucination Rate",         f"{df['hallucination_flag'].mean()*100:.1f}%",            "Monitor",  ORANGE),
+        ("Low-Confidence Rate (< 0.6)",f"{(df['ai_confidence_score']<0.6).mean()*100:.1f}%",    "Monitor",  ORANGE),
+        ("Routing Accuracy Rate",      f"{df['routing_correct'].mean()*100:.1f}%",               "Good",     GREEN),
+        ("Escalation Rate",            f"{df['escalated_to_human'].mean()*100:.1f}%",            "Monitor",  ORANGE),
+        ("SLA Breach Rate",            f"{df['sla_breached'].mean()*100:.1f}%",                  "Critical", RED),
+        ("Repeat Issue Rate",          f"{df['repeat_issue'].mean()*100:.1f}%",                  "Monitor",  ORANGE),
+        ("Avg Customer Rating",        f"{df['customer_rating'].mean():.2f} / 5.0",              "Good",     GREEN),
+        ("Avg Cost Per Ticket",        f"${df['estimated_cost_per_ticket'].mean():.2f}",         "Monitor",  ORANGE),
+        ("Avg Total Resolution Time",  f"{df['total_resolution_time_minutes'].mean():.1f} min",  "Monitor",  ORANGE),
     ]
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
     ax.axis("off")
 
-    col_labels = ["KPI", "Value", "Status"]
-    table_data = [(row[0], row[1], row[2]) for row in kpi_data]
-
-    table = ax.table(
-        cellText=table_data,
-        colLabels=col_labels,
+    tbl = ax.table(
+        cellText=[(r[0], r[1], r[2]) for r in rows],
+        colLabels=["KPI", "Value", "Status"],
         loc="center",
-        cellLoc="center"
+        cellLoc="center",
     )
-    table.auto_set_font_size(False)
-    table.set_fontsize(11)
-    table.scale(1.0, 2.0)
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(11)
+    tbl.scale(1.0, 2.1)
 
-    # Header styling
     for j in range(3):
-        table[0, j].set_facecolor(DARK_BLUE)
-        table[0, j].set_text_props(color="white", fontweight="bold")
+        tbl[0, j].set_facecolor(DARK_BLUE)
+        tbl[0, j].set_text_props(color="white", fontweight="bold", fontsize=11.5)
 
-    # Row styling
-    for i, row in enumerate(kpi_data):
-        status_color = row[3]
+    for i, (_, _, _, color) in enumerate(rows):
+        row_bg = LIGHT_GRAY if i % 2 == 0 else "white"
         for j in range(3):
-            cell = table[i + 1, j]
+            cell = tbl[i + 1, j]
             if j == 2:
-                cell.set_facecolor(status_color)
+                cell.set_facecolor(color)
                 cell.set_text_props(color="white", fontweight="bold")
             else:
-                cell.set_facecolor("#F4F6F7" if i % 2 == 0 else "white")
+                cell.set_facecolor(row_bg)
+                cell.set_text_props(color=DARK_BLUE)
 
-    ax.set_title("AI Workflow — Top 10 KPI Summary", fontsize=14,
-                 fontweight="bold", pad=12, color=DARK_BLUE)
-    save(fig, "kpi_summary_table.png")
+    ax.set_title("AI Workflow — Operational KPI Summary", pad=16)
+    _footnote(ax)
+    _save(fig, "kpi_summary_table.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2. TICKET VOLUME BY CATEGORY
+# 2  TICKET VOLUME BY CATEGORY
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_ticket_volume():
     counts = df["issue_category"].value_counts().sort_values()
     fig, ax = plt.subplots(figsize=(9, 5))
-    bars = ax.barh(counts.index, counts.values, color=BLUE, edgecolor="white", height=0.6)
+
+    bars = ax.barh(counts.index, counts.values, color=BLUE, edgecolor="white",
+                   height=0.62)
     for bar, val in zip(bars, counts.values):
-        ax.text(val + 1, bar.get_y() + bar.get_height() / 2,
-                str(val), va="center", fontsize=10, color=DARK_BLUE, fontweight="bold")
-    ax.set_xlabel("Number of Tickets", fontsize=11)
-    ax.set_title("Ticket Volume by Issue Category", fontsize=13, fontweight="bold",
-                 color=DARK_BLUE, pad=10)
-    ax.set_xlim(0, counts.max() * 1.12)
-    ax.tick_params(axis="y", labelsize=10)
+        ax.text(val + 0.8, bar.get_y() + bar.get_height() / 2,
+                str(val), va="center", fontsize=10.5, color=DARK_BLUE, fontweight="bold")
+
+    ax.set_xlabel("Number of Tickets")
+    ax.set_title("Ticket Volume by Issue Category")
+    ax.set_xlim(0, counts.max() * 1.14)
+    ax.tick_params(axis="y", labelsize=10.5)
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "ticket_volume_by_category.png")
+    _save(fig, "ticket_volume_by_category.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3. ESCALATION RATE BY CATEGORY
+# 3  ESCALATION RATE BY CATEGORY
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_escalation_rate_by_category():
-    esc_rate = (df.groupby("issue_category")["escalated_to_human"].mean() * 100).sort_values(ascending=False)
+    esc = (df.groupby("issue_category")["escalated_to_human"].mean() * 100).sort_values(ascending=False)
+    colors = [RED if v >= 50 else ORANGE if v >= 35 else BLUE for v in esc.values]
+
     fig, ax = plt.subplots(figsize=(9, 5))
-    colors = [RED if v >= 50 else ORANGE if v >= 35 else BLUE for v in esc_rate.values]
-    bars = ax.bar(esc_rate.index, esc_rate.values, color=colors, edgecolor="white", width=0.6)
-    ax.axhline(y=50, color=RED, linestyle="--", linewidth=1.5, alpha=0.8, label="50% Threshold")
-    for bar, val in zip(bars, esc_rate.values):
+    bars = ax.bar(esc.index, esc.values, color=colors, edgecolor="white", width=0.6)
+    ax.axhline(y=50, color=RED, linestyle="--", linewidth=1.5, alpha=0.75, label="50% threshold")
+
+    for bar, val in zip(bars, esc.values):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.8,
-                f"{val:.1f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
-    ax.set_ylabel("Escalation Rate (%)", fontsize=11)
-    ax.set_title("Escalation Rate by Issue Category", fontsize=13, fontweight="bold",
-                 color=DARK_BLUE, pad=10)
-    ax.set_ylim(0, max(esc_rate.values) * 1.18)
-    ax.tick_params(axis="x", rotation=20, labelsize=9)
-    ax.legend(fontsize=10)
+                f"{val:.1f}%", ha="center", va="bottom", fontsize=9.5, fontweight="bold",
+                color=DARK_BLUE)
+
+    ax.set_ylabel("Escalation Rate (%)")
+    ax.set_title("Escalation Rate by Issue Category")
+    ax.set_ylim(0, esc.max() * 1.2)
+    ax.tick_params(axis="x", rotation=18, labelsize=9.5)
+    ax.legend()
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "escalation_rate_by_category.png")
+    _save(fig, "escalation_rate_by_category.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4. CONFIDENCE SCORE DISTRIBUTION
+# 4  CONFIDENCE SCORE DISTRIBUTION
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_confidence_distribution():
     fig, ax = plt.subplots(figsize=(9, 5))
-    ax.hist(df["ai_confidence_score"], bins=30, color=BLUE, edgecolor="white",
-            alpha=0.85, label="Confidence Score")
-    ax.axvline(x=0.6, color=RED, linestyle="--", linewidth=2,
-               label="Low Threshold (0.6)")
-    ax.axvline(x=0.8, color=GREEN, linestyle="--", linewidth=2,
-               label="High Threshold (0.8)")
-    low_pct  = (df["ai_confidence_score"] < 0.6).mean() * 100
-    mid_pct  = ((df["ai_confidence_score"] >= 0.6) & (df["ai_confidence_score"] < 0.8)).mean() * 100
-    high_pct = (df["ai_confidence_score"] >= 0.8).mean() * 100
-    ax.text(0.30, ax.get_ylim()[1] * 0.88, f"Low: {low_pct:.1f}%",
-            color=RED, fontsize=10, fontweight="bold", ha="center")
-    ax.text(0.70, ax.get_ylim()[1] * 0.88, f"Medium: {mid_pct:.1f}%",
-            color=ORANGE, fontsize=10, fontweight="bold", ha="center")
-    ax.text(0.91, ax.get_ylim()[1] * 0.88, f"High: {high_pct:.1f}%",
-            color=GREEN, fontsize=10, fontweight="bold", ha="center")
-    ax.set_xlabel("AI Confidence Score", fontsize=11)
-    ax.set_ylabel("Ticket Count", fontsize=11)
-    ax.set_title("Distribution of AI Confidence Scores", fontsize=13,
-                 fontweight="bold", color=DARK_BLUE, pad=10)
-    ax.legend(fontsize=10)
+    ax.hist(df["ai_confidence_score"], bins=30, color=BLUE, edgecolor="white", alpha=0.85)
+    ax.axvline(x=0.6, color=RED,   linestyle="--", linewidth=2, label="Low threshold  (0.60)")
+    ax.axvline(x=0.8, color=GREEN, linestyle="--", linewidth=2, label="High threshold (0.80)")
+
+    # Compute after hist so ylim is known
+    ymax = ax.get_ylim()[1]
+    low  = (df["ai_confidence_score"] < 0.6).mean() * 100
+    mid  = ((df["ai_confidence_score"] >= 0.6) & (df["ai_confidence_score"] < 0.8)).mean() * 100
+    high = (df["ai_confidence_score"] >= 0.8).mean() * 100
+
+    band_y = ymax * 0.87
+    ax.text(0.30, band_y, f"Low\n{low:.0f}%",    color=RED,    fontsize=10, fontweight="bold", ha="center")
+    ax.text(0.70, band_y, f"Medium\n{mid:.0f}%",  color=ORANGE, fontsize=10, fontweight="bold", ha="center")
+    ax.text(0.90, band_y, f"High\n{high:.0f}%",   color=GREEN,  fontsize=10, fontweight="bold", ha="center")
+
+    ax.set_xlabel("AI Confidence Score")
+    ax.set_ylabel("Ticket Count")
+    ax.set_title("Distribution of AI Confidence Scores")
+    ax.legend()
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "confidence_distribution.png")
+    _save(fig, "confidence_distribution.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 5. CUSTOMER RATING BY CATEGORY
+# 5  CUSTOMER RATING BY CATEGORY
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_customer_rating_by_category():
     rating = df.groupby("issue_category")["customer_rating"].mean().sort_values()
-    fig, ax = plt.subplots(figsize=(9, 5))
     colors = [GREEN if v >= 4.0 else ORANGE if v >= 3.5 else RED for v in rating.values]
-    bars = ax.barh(rating.index, rating.values, color=colors, edgecolor="white", height=0.6)
-    ax.axvline(x=3.5, color=GRAY, linestyle="--", linewidth=1.5, alpha=0.7, label="3.5 Baseline")
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.barh(rating.index, rating.values, color=colors, edgecolor="white", height=0.62)
+    ax.axvline(x=3.5, color=GRAY, linestyle="--", linewidth=1.5, alpha=0.8, label="3.5 baseline")
+
     for bar, val in zip(bars, rating.values):
-        ax.text(val + 0.02, bar.get_y() + bar.get_height() / 2,
-                f"{val:.2f}", va="center", fontsize=10, fontweight="bold")
-    ax.set_xlabel("Avg Customer Rating (1–5)", fontsize=11)
-    ax.set_title("Average Customer Rating by Issue Category", fontsize=13,
-                 fontweight="bold", color=DARK_BLUE, pad=10)
-    ax.set_xlim(0, 5.5)
-    ax.legend(fontsize=10)
+        ax.text(val + 0.03, bar.get_y() + bar.get_height() / 2,
+                f"{val:.2f}", va="center", fontsize=10.5, fontweight="bold", color=DARK_BLUE)
+
+    ax.set_xlabel("Avg Customer Rating (1–5 scale)")
+    ax.set_title("Average Customer Rating by Issue Category")
+    ax.set_xlim(0, 5.6)
+    ax.legend()
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "customer_rating_by_category.png")
+    _save(fig, "customer_rating_by_category.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 6. SLA BREACH RATE BY PRIORITY
+# 6  SLA BREACH RATE BY PRIORITY
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_sla_breach_by_priority():
-    priority_order = ["low", "medium", "high", "critical"]
+    order = ["low", "medium", "high", "critical"]
     breach = df.groupby("priority_level")["sla_breached"].mean() * 100
-    breach = breach.reindex(priority_order)
+    breach = breach.reindex(order)
+    bar_colors = [GREEN, ORANGE, ORANGE, RED]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    bar_colors = [GREEN, ORANGE, ORANGE, RED]
-    bars = ax.bar(breach.index, breach.values, color=bar_colors, edgecolor="white", width=0.5)
-    for bar, val in zip(bars, breach.values):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
-                f"{val:.1f}%", ha="center", va="bottom", fontsize=11, fontweight="bold")
-    ax.set_ylabel("SLA Breach Rate (%)", fontsize=11)
-    ax.set_xlabel("Priority Level", fontsize=11)
-    ax.set_title("SLA Breach Rate by Priority Level", fontsize=13, fontweight="bold",
-                 color=DARK_BLUE, pad=10)
-    ax.set_ylim(0, max(breach.values) * 1.18)
+    bars = ax.bar(breach.index, breach.values, color=bar_colors, edgecolor="white", width=0.52)
 
-    legend_patches = [
-        mpatches.Patch(color=GREEN, label="On Track"),
+    for bar, val in zip(bars, breach.values):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.4,
+                f"{val:.1f}%", ha="center", va="bottom", fontsize=11.5, fontweight="bold",
+                color=DARK_BLUE)
+
+    ax.set_ylabel("SLA Breach Rate (%)")
+    ax.set_xlabel("Priority Level")
+    ax.set_title("SLA Breach Rate by Priority Level")
+    ax.set_ylim(0, breach.max() * 1.2)
+    ax.legend(handles=[
+        mpatches.Patch(color=GREEN,  label="On Track"),
         mpatches.Patch(color=ORANGE, label="Warning"),
-        mpatches.Patch(color=RED, label="Critical"),
-    ]
-    ax.legend(handles=legend_patches, fontsize=10)
+        mpatches.Patch(color=RED,    label="Critical"),
+    ])
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "sla_breach_by_priority.png")
+    _save(fig, "sla_breach_by_priority.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. COST BY ESCALATION STATUS
+# 7  COST BY ESCALATION STATUS
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_cost_by_escalation():
-    avg_cost_esc  = df.loc[df["escalated_to_human"],  "estimated_cost_per_ticket"].mean()
-    avg_cost_ai   = df.loc[~df["escalated_to_human"], "estimated_cost_per_ticket"].mean()
-    labels = ["AI-Handled", "Escalated to Human"]
-    values = [avg_cost_ai, avg_cost_esc]
-    colors = [GREEN, RED]
+    ai_cost  = df.loc[~df["escalated_to_human"], "estimated_cost_per_ticket"].mean()
+    esc_cost = df.loc[df["escalated_to_human"],  "estimated_cost_per_ticket"].mean()
+    multiplier = esc_cost / ai_cost
 
     fig, ax = plt.subplots(figsize=(7, 5))
-    bars = ax.bar(labels, values, color=colors, edgecolor="white", width=0.45)
-    for bar, val in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
-                f"${val:.2f}", ha="center", va="bottom", fontsize=13, fontweight="bold")
-    ax.set_ylabel("Avg Cost Per Ticket (USD)", fontsize=11)
-    ax.set_title("Average Ticket Cost: AI-Handled vs Escalated", fontsize=13,
-                 fontweight="bold", color=DARK_BLUE, pad=10)
-    ax.set_ylim(0, max(values) * 1.2)
-    multiplier = avg_cost_esc / avg_cost_ai
-    ax.text(0.5, 0.88, f"{multiplier:.1f}x cost multiplier for escalation",
-            transform=ax.transAxes, ha="center", fontsize=11, color=RED,
-            fontweight="bold", style="italic")
+    bars = ax.bar(["AI-Handled", "Escalated to Human"],
+                  [ai_cost, esc_cost],
+                  color=[GREEN, RED], edgecolor="white", width=0.46)
+
+    for bar, val in zip(bars, [ai_cost, esc_cost]):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.25,
+                f"${val:.2f}", ha="center", va="bottom", fontsize=13, fontweight="bold",
+                color=DARK_BLUE)
+
+    ax.set_ylabel("Avg Cost Per Ticket (USD)")
+    ax.set_title("Avg Ticket Cost: AI-Handled vs Escalated")
+    ax.set_ylim(0, esc_cost * 1.22)
+    ax.text(0.5, 0.90, f"{multiplier:.1f}× cost multiplier",
+            transform=ax.transAxes, ha="center", fontsize=11.5,
+            color=RED, fontweight="bold", style="italic")
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "cost_by_escalation_status.png")
+    _save(fig, "cost_by_escalation_status.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 8. CONFIDENCE VS RATING SCATTER
+# 8  CONFIDENCE VS CUSTOMER RATING (SCATTER)
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_confidence_vs_rating():
-    fig, ax = plt.subplots(figsize=(9, 6))
-    escalated     = df[df["escalated_to_human"] == True]
-    not_escalated = df[df["escalated_to_human"] == False]
+    esc = df[df["escalated_to_human"]]
+    ai  = df[~df["escalated_to_human"]]
 
-    ax.scatter(not_escalated["ai_confidence_score"], not_escalated["customer_rating"],
-               color=BLUE, alpha=0.45, s=28, label="AI-Handled", edgecolors="none")
-    ax.scatter(escalated["ai_confidence_score"], escalated["customer_rating"],
-               color=ORANGE, alpha=0.55, s=28, label="Escalated", edgecolors="none")
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    ax.scatter(ai["ai_confidence_score"],  ai["customer_rating"],
+               color=BLUE,   alpha=0.40, s=26, label="AI-Handled",       edgecolors="none")
+    ax.scatter(esc["ai_confidence_score"], esc["customer_rating"],
+               color=ORANGE, alpha=0.50, s=26, label="Escalated to Human", edgecolors="none")
 
-    # Trend lines
-    for subset, color in [(not_escalated, BLUE), (escalated, ORANGE)]:
+    for subset, color in [(ai, BLUE), (esc, ORANGE)]:
         z = np.polyfit(subset["ai_confidence_score"], subset["customer_rating"], 1)
-        p = np.poly1d(z)
-        x_line = np.linspace(subset["ai_confidence_score"].min(),
-                             subset["ai_confidence_score"].max(), 100)
-        ax.plot(x_line, p(x_line), color=color, linewidth=2, alpha=0.9)
+        xline = np.linspace(subset["ai_confidence_score"].min(),
+                            subset["ai_confidence_score"].max(), 100)
+        ax.plot(xline, np.poly1d(z)(xline), color=color, linewidth=2, alpha=0.9)
 
-    ax.axvline(x=0.6, color=RED, linestyle="--", linewidth=1.4, alpha=0.7,
-               label="Low Conf. Threshold")
-    ax.axvline(x=0.8, color=GREEN, linestyle="--", linewidth=1.4, alpha=0.7,
-               label="High Conf. Threshold")
-    ax.set_xlabel("AI Confidence Score", fontsize=11)
-    ax.set_ylabel("Customer Rating", fontsize=11)
-    ax.set_title("AI Confidence Score vs Customer Rating\n(by Escalation Status)",
-                 fontsize=13, fontweight="bold", color=DARK_BLUE)
-    ax.legend(fontsize=10)
+    ax.axvline(x=0.6, color=RED,   linestyle="--", linewidth=1.4, alpha=0.65, label="Low threshold  (0.60)")
+    ax.axvline(x=0.8, color=GREEN, linestyle="--", linewidth=1.4, alpha=0.65, label="High threshold (0.80)")
+    ax.set_xlabel("AI Confidence Score")
+    ax.set_ylabel("Customer Rating (1–5)")
+    ax.set_title("AI Confidence Score vs Customer Rating")
+    ax.legend()
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "confidence_vs_rating_scatter.png")
+    _save(fig, "confidence_vs_rating_scatter.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 9. WORKFLOW FRICTION HEATMAP
+# 9  WORKFLOW FRICTION HEATMAP
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_workflow_friction_heatmap():
-    try:
-        import seaborn as sns
-        use_seaborn = True
-    except ImportError:
-        use_seaborn = False
-
     agg = df.groupby("issue_category").agg(
-        escalation_rate   = ("escalated_to_human", "mean"),
-        hallucination_rate = ("hallucination_flag", "mean"),
-        sla_breach_rate   = ("sla_breached", "mean"),
-        avg_rating        = ("customer_rating", "mean"),
-        avg_cost          = ("estimated_cost_per_ticket", "mean"),
+        escalation_rate    = ("escalated_to_human", "mean"),
+        hallucination_rate = ("hallucination_flag",  "mean"),
+        sla_breach_rate    = ("sla_breached",         "mean"),
+        avg_rating         = ("customer_rating",      "mean"),
+        avg_cost           = ("estimated_cost_per_ticket", "mean"),
     ).round(4)
 
-    # Normalize each column to 0–1 for comparability (higher = more friction, invert rating)
-    heat_data = agg.copy()
+    heat = agg.copy()
     for col in ["escalation_rate", "hallucination_rate", "sla_breach_rate", "avg_cost"]:
-        mn, mx = heat_data[col].min(), heat_data[col].max()
-        heat_data[col] = (heat_data[col] - mn) / (mx - mn + 1e-9)
-    # Invert rating (lower rating = higher friction)
-    mn, mx = heat_data["avg_rating"].min(), heat_data["avg_rating"].max()
-    heat_data["avg_rating"] = 1 - (heat_data["avg_rating"] - mn) / (mx - mn + 1e-9)
+        lo, hi = heat[col].min(), heat[col].max()
+        heat[col] = (heat[col] - lo) / (hi - lo + 1e-9)
+    lo, hi = heat["avg_rating"].min(), heat["avg_rating"].max()
+    heat["avg_rating"] = 1 - (heat["avg_rating"] - lo) / (hi - lo + 1e-9)
 
-    heat_data.columns = ["Escalation\nRate", "Hallucination\nRate",
-                          "SLA Breach\nRate", "Rating\n(inverted)", "Avg Cost\n(normalized)"]
+    heat.columns = ["Escalation\nRate", "Hallucination\nRate",
+                    "SLA Breach\nRate", "Low Rating\n(inverted)", "Avg Cost\n(norm.)"]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    if use_seaborn:
-        sns.heatmap(
-            heat_data, ax=ax, cmap="YlOrRd", annot=True, fmt=".2f",
-            linewidths=0.5, linecolor="white",
-            cbar_kws={"label": "Normalized Friction Score (0=Low, 1=High)"}
-        )
-    else:
-        im = ax.imshow(heat_data.values, cmap="YlOrRd", aspect="auto", vmin=0, vmax=1)
-        plt.colorbar(im, ax=ax, label="Normalized Friction Score")
-        ax.set_xticks(range(len(heat_data.columns)))
-        ax.set_xticklabels(heat_data.columns, fontsize=9)
-        ax.set_yticks(range(len(heat_data.index)))
-        ax.set_yticklabels(heat_data.index, fontsize=9)
-        for i in range(len(heat_data.index)):
-            for j in range(len(heat_data.columns)):
-                ax.text(j, i, f"{heat_data.values[i, j]:.2f}",
-                        ha="center", va="center", fontsize=8, fontweight="bold")
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    try:
+        import seaborn as sns
+        sns.heatmap(heat, ax=ax, cmap="YlOrRd", annot=True, fmt=".2f",
+                    linewidths=0.5, linecolor="white",
+                    cbar_kws={"label": "Normalized friction (0 = low, 1 = high)", "shrink": 0.85})
+    except ImportError:
+        im = ax.imshow(heat.values, cmap="YlOrRd", aspect="auto", vmin=0, vmax=1)
+        plt.colorbar(im, ax=ax, label="Normalized friction", shrink=0.85)
+        ax.set_xticks(range(len(heat.columns)))
+        ax.set_xticklabels(heat.columns, fontsize=9)
+        ax.set_yticks(range(len(heat.index)))
+        ax.set_yticklabels(heat.index, fontsize=9)
+        for i in range(len(heat.index)):
+            for j in range(len(heat.columns)):
+                ax.text(j, i, f"{heat.values[i,j]:.2f}",
+                        ha="center", va="center", fontsize=9, fontweight="bold")
 
-    ax.set_title("Workflow Friction Heatmap by Issue Category\n(Normalized — Higher = More Friction)",
-                 fontsize=12, fontweight="bold", color=DARK_BLUE, pad=12)
-    ax.set_ylabel("Issue Category", fontsize=11)
+    ax.set_title("Workflow Friction Heatmap — Normalized by Issue Category")
+    ax.set_ylabel("Issue Category")
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "workflow_friction_heatmap.png")
+    _save(fig, "workflow_friction_heatmap.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 10. ESCALATION FUNNEL
+# 10  ESCALATION FUNNEL
 # ═══════════════════════════════════════════════════════════════════════════════
 def plot_escalation_funnel():
-    total         = len(df)
-    ai_handled    = int((~df["escalated_to_human"]).sum())
-    esc_required  = int(df["escalation_required"].sum())
-    esc_to_human  = int(df["escalated_to_human"].sum())
-    sla_breached  = int(df["sla_breached"].sum())
+    total        = len(df)
+    ai_handled   = int((~df["escalated_to_human"]).sum())
+    esc_required = int(df["escalation_required"].sum())
+    esc_to_human = int(df["escalated_to_human"].sum())
+    sla_breached = int(df["sla_breached"].sum())
 
     stages = [
-        ("Total Tickets",           total,        BLUE),
-        ("AI Handled",              ai_handled,   GREEN),
+        ("Total Tickets Received",  total,        BLUE),
+        ("AI-Handled (resolved)",   ai_handled,   GREEN),
         ("Escalation Required",     esc_required, ORANGE),
         ("Escalated to Human",      esc_to_human, ORANGE),
         ("SLA Breached",            sla_breached, RED),
     ]
 
-    fig, ax = plt.subplots(figsize=(10, 5.5))
-    y_pos = range(len(stages))
-    bar_heights = 0.55
-
-    max_val = total
+    fig, ax = plt.subplots(figsize=(10, 5))
     for i, (label, val, color) in enumerate(stages):
-        ax.barh(i, val, height=bar_heights, color=color, alpha=0.85, edgecolor="white")
-        pct = f"({val/total*100:.1f}%)" if i > 0 else ""
-        ax.text(val + max_val * 0.01, i, f"  {val:,} {pct}",
+        ax.barh(i, val, height=0.56, color=color, alpha=0.88, edgecolor="white")
+        pct = f"  ({val/total*100:.1f}%)" if i > 0 else ""
+        ax.text(val + total * 0.012, i, f"{val:,}{pct}",
                 va="center", fontsize=11, fontweight="bold", color=DARK_BLUE)
 
-    ax.set_yticks(list(y_pos))
+    ax.set_yticks(range(len(stages)))
     ax.set_yticklabels([s[0] for s in stages], fontsize=11, fontweight="bold")
-    ax.set_xlabel("Number of Tickets", fontsize=11)
-    ax.set_title("Escalation Funnel — AI Workflow Support Operations",
-                 fontsize=13, fontweight="bold", color=DARK_BLUE, pad=12)
-    ax.set_xlim(0, max_val * 1.22)
+    ax.set_xlabel("Number of Tickets")
+    ax.set_title("Ticket Escalation Funnel — AI Support Workflow")
+    ax.set_xlim(0, total * 1.22)
     ax.invert_yaxis()
+    _footnote(ax)
     plt.tight_layout()
-    save(fig, "escalation_funnel.png")
+    _save(fig, "escalation_funnel.png")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# RUN ALL
 # ═══════════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     print("Generating visualizations...\n")
