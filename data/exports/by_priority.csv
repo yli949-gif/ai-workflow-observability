@@ -1,0 +1,5 @@
+priority_level,ticket_count,escalation_rate,hallucination_rate,sla_breach_rate,avg_rating,avg_cost,avg_resolution_time,avg_confidence,ai_accuracy_rate
+low,99,0.3535,0.0404,0.0,4.0273,14.5035,29.6897,0.6587,0.7475
+medium,141,0.3617,0.0496,0.0,4.0667,14.7072,27.198,0.6794,0.7021
+high,105,0.4381,0.0381,0.1714,3.9838,16.3171,31.9455,0.6631,0.6476
+critical,55,0.4182,0.0364,0.2,3.9818,15.8387,37.0133,0.6613,0.6545
